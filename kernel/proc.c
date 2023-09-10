@@ -276,6 +276,10 @@ fork(void)
   np->sz = p->sz;
 
   np->parent = p;
+  
+  safestrcpy(np->name,p->name,sizeof(p->name));
+  
+  np->trace_mask = p->trace_mask;
 
   // copy saved user registers.
   *(np->trapframe) = *(p->trapframe);
@@ -691,5 +695,17 @@ procdump(void)
       state = "???";
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
+  }
+}
+
+//获取有多少进程在活动
+void
+procnum(uint64 *dst)
+{
+  *dst=0;
+  struct proc *p;
+  for (p = proc ; p < &proc[NPROC]; p ++ ) {
+    if (p -> state != UNUSED)
+      (*dst)++;
   }
 }
