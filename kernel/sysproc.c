@@ -49,6 +49,12 @@ sys_sbrk(void)
   addr = myproc()->sz;
   if(growproc(n) < 0)
     return -1;
+  //分配了新虚拟地址空间，那要添加新映射
+  if(n>0)
+    u2kvmcopy(myproc()->pagetable,myproc()->kernelpt,addr,addr+n);
+  else if(n<0)
+    for(int j=addr-PGSIZE;j>=addr+n;j-=PGSIZE)
+      uvmunmap(myproc()->kernelpt,j,1,0);
   return addr;
 }
 
