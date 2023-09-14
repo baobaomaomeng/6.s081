@@ -65,6 +65,21 @@ usertrap(void)
     intr_on();
 
     syscall();
+  } else if(r_scause()==15||r_scause()==13){
+    uint64 va=r_stval();
+    //分配物理页
+    uint64 pa=(uint64)kalloc();
+    //分配物理页失败或者地址大于进程空间则出错
+    if(pa==0||va>=p->sz||PGROUNDUP(p->trapframe->sp) - 1>=va)p->killed=1;
+    else{
+      va=PGROUNDDOWN(va);
+      memset(pa,0,PGSIZE);
+      if(mappages(p->pagetable,va,PGSIZE,pa,PTE_R|PTE_W|PTE_U|PTE_W)!=0){
+        kfree(pa);
+        p->killed=1;
+      }
+    }
+
   } else if((which_dev = devintr()) != 0){
     // ok
   } else {
