@@ -484,3 +484,19 @@ sys_pipe(void)
   }
   return 0;
 }
+
+uint64
+sigalarm(void) {
+  if(argint(0, &myproc()->alarm_interval) < 0 ||
+    argaddr(1, (uint64*)&myproc()->alarm_handler) < 0)
+    return -1;
+
+  return 0;
+}
+
+uint64
+sigreturn(void) {
+  memmove(myproc()->trapframe, myproc()->alarm_trapframe, sizeof(struct trapframe));
+  myproc()->is_alarming = 0;
+  return 0;
+}
