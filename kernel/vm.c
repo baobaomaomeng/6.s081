@@ -320,13 +320,16 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
       panic("uvmcopy: page not present");
     pa = PTE2PA(*pte);
     flags = PTE_FLAGS(*pte);
-    if((mem = kalloc()) == 0)
-      goto err;
-    memmove(mem, (char*)pa, PGSIZE);
-    if(mappages(new, i, PGSIZE, (uint64)mem, flags) != 0){
-      kfree(mem);
+    // 仅对可写页面设置COW标记
+    if(flags & PTE_W) {
+      // 禁用写并设置COW Fork标记
+      flags = (flags | PTE_C) & ~PTE_W;
+      *pte = PA2PTE(pa) | flags;
+    }
+    if(mappages(new, i, PGSIZE, pa, flags) != 0){
       goto err;
     }
+    pagecnt_add(pa);
   }
   return 0;
 
@@ -359,6 +362,11 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
   while(len > 0){
     va0 = PGROUNDDOWN(dstva);
     pa0 = walkaddr(pagetable, va0);
+    // 处理COW页面的情况
+    if(is_cowpage(pagetable, va0) == 0) {
+      // 更换目标物理地址
+      pa0 = (uint64)cowalloc(pagetable, va0);
+    }
     if(pa0 == 0)
       return -1;
     n = PGSIZE - (dstva - va0);
